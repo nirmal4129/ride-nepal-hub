@@ -8,6 +8,9 @@ import Listings from "./pages/Listings";
 import VehicleDetails from "./pages/VehicleDetails";
 import SellVehicle from "./pages/SellVehicle";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
+import VehicleApproval from "./pages/admin/VehicleApproval";
+import UserManagement from "./pages/admin/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +27,10 @@ const App = () => (
           <Route path="/listings/:id" element={<VehicleDetails />} />
           <Route path="/sell" element={<SellVehicle />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/admin" element={<Admin />}>
+            <Route index element={<VehicleApproval />} />
+            <Route path="users" element={<UserManagement />} />
+          </Route>
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
