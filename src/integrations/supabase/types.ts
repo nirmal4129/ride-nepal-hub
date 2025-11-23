@@ -14,16 +14,247 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      brands: {
+        Row: {
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      models: {
+        Row: {
+          brand_id: string
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          category: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          category?: Database["public"]["Enums"]["vehicle_category"]
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          avatar_url: string | null
+          bio: string | null
+          city: string
+          created_at: string
+          full_name: string
+          id: string
+          phone_number: string
+          updated_at: string
+          user_type: Database["public"]["Enums"]["user_type"]
+          username: string | null
+          verification_status: Database["public"]["Enums"]["verification_status"]
+        }
+        Insert: {
+          address?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          city: string
+          created_at?: string
+          full_name: string
+          id: string
+          phone_number: string
+          updated_at?: string
+          user_type?: Database["public"]["Enums"]["user_type"]
+          username?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Update: {
+          address?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          city?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone_number?: string
+          updated_at?: string
+          user_type?: Database["public"]["Enums"]["user_type"]
+          username?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status"]
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          brand_id: string | null
+          brand_name: string
+          category: Database["public"]["Enums"]["vehicle_category"]
+          city: string
+          condition: Database["public"]["Enums"]["vehicle_condition"]
+          contact_phone: string
+          created_at: string
+          description: string | null
+          engine_capacity: number | null
+          id: string
+          images: Json | null
+          is_negotiable: boolean | null
+          is_urgent: boolean | null
+          mileage: number | null
+          model_id: string | null
+          model_name: string
+          price: number
+          seller_id: string
+          status: Database["public"]["Enums"]["listing_status"]
+          updated_at: string
+          views_count: number | null
+          year: number
+        }
+        Insert: {
+          brand_id?: string | null
+          brand_name: string
+          category: Database["public"]["Enums"]["vehicle_category"]
+          city: string
+          condition?: Database["public"]["Enums"]["vehicle_condition"]
+          contact_phone: string
+          created_at?: string
+          description?: string | null
+          engine_capacity?: number | null
+          id?: string
+          images?: Json | null
+          is_negotiable?: boolean | null
+          is_urgent?: boolean | null
+          mileage?: number | null
+          model_id?: string | null
+          model_name: string
+          price: number
+          seller_id: string
+          status?: Database["public"]["Enums"]["listing_status"]
+          updated_at?: string
+          views_count?: number | null
+          year: number
+        }
+        Update: {
+          brand_id?: string | null
+          brand_name?: string
+          category?: Database["public"]["Enums"]["vehicle_category"]
+          city?: string
+          condition?: Database["public"]["Enums"]["vehicle_condition"]
+          contact_phone?: string
+          created_at?: string
+          description?: string | null
+          engine_capacity?: number | null
+          id?: string
+          images?: Json | null
+          is_negotiable?: boolean | null
+          is_urgent?: boolean | null
+          mileage?: number | null
+          model_id?: string | null
+          model_name?: string
+          price?: number
+          seller_id?: string
+          status?: Database["public"]["Enums"]["listing_status"]
+          updated_at?: string
+          views_count?: number | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_username: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_or_moderator: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      listing_status: "pending" | "approved" | "rejected" | "sold"
+      user_type: "buyer" | "seller"
+      vehicle_category: "bike" | "scooter" | "car"
+      vehicle_condition: "new" | "used" | "certified"
+      verification_status: "verified" | "unverified"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +381,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      listing_status: ["pending", "approved", "rejected", "sold"],
+      user_type: ["buyer", "seller"],
+      vehicle_category: ["bike", "scooter", "car"],
+      vehicle_condition: ["new", "used", "certified"],
+      verification_status: ["verified", "unverified"],
+    },
   },
 } as const
