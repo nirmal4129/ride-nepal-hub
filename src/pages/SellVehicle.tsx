@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,14 +7,42 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, X, CheckCircle2 } from "lucide-react";
+import { Upload, X, CheckCircle2, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const SellVehicle = () => {
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [formData, setFormData] = useState({
+    category: "",
+    brandName: "",
+    modelName: "",
+    year: "",
+    price: "",
+    mileage: "",
+    title: "",
+    description: "",
+    engineCapacity: "",
+    condition: "",
+    city: "",
+    contactPhone: "",
+    isNegotiable: true,
+    isUrgent: false
+  });
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error("Please log in to list a vehicle");
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -34,10 +63,78 @@ const SellVehicle = () => {
     setPreviewUrls(newUrls);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Vehicle listing submitted successfully! We'll review it soon.");
+    
+    if (!user) {
+      toast.error("Please log in to list a vehicle");
+      navigate("/auth");
+      return;
+    }
+
+    if (images.length === 0) {
+      toast.error("Please add at least one image");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Convert images to base64 for JSON storage (simplified approach)
+      const imageUrls = await Promise.all(
+        images.map(async (file) => {
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      const { error } = await supabase
+        .from('vehicles')
+        .insert({
+          seller_id: user.id,
+          category: formData.category as any,
+          brand_name: formData.brandName,
+          model_name: formData.modelName,
+          year: parseInt(formData.year),
+          price: parseFloat(formData.price),
+          mileage: parseInt(formData.mileage),
+          description: formData.description,
+          engine_capacity: formData.engineCapacity ? parseInt(formData.engineCapacity) : null,
+          condition: formData.condition as any,
+          city: formData.city,
+          contact_phone: formData.contactPhone,
+          is_negotiable: formData.isNegotiable,
+          is_urgent: formData.isUrgent,
+          images: imageUrls,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      toast.success("Vehicle listing submitted successfully! We'll review it soon.");
+      navigate("/listings");
+    } catch (error: any) {
+      console.error("Error submitting listing:", error);
+      toast.error(error.message || "Failed to submit listing");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,14 +142,12 @@ const SellVehicle = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
-          {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl md:text-4xl font-bold mb-2">List Your Vehicle</h1>
             <p className="text-muted-foreground">Fill in the details below to create your listing</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
@@ -61,7 +156,7 @@ const SellVehicle = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="category">Category *</Label>
-                    <Select required>
+                    <Select required value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
                       <SelectTrigger id="category">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -75,31 +170,29 @@ const SellVehicle = () => {
 
                   <div>
                     <Label htmlFor="brand">Brand *</Label>
-                    <Select required>
-                      <SelectTrigger id="brand">
-                        <SelectValue placeholder="Select brand" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="honda">Honda</SelectItem>
-                        <SelectItem value="yamaha">Yamaha</SelectItem>
-                        <SelectItem value="suzuki">Suzuki</SelectItem>
-                        <SelectItem value="hero">Hero</SelectItem>
-                        <SelectItem value="bajaj">Bajaj</SelectItem>
-                        <SelectItem value="tvs">TVS</SelectItem>
-                        <SelectItem value="ktm">KTM</SelectItem>
-                        <SelectItem value="royal-enfield">Royal Enfield</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input 
+                      id="brand" 
+                      placeholder="e.g., Honda" 
+                      required 
+                      value={formData.brandName}
+                      onChange={(e) => setFormData({...formData, brandName: e.target.value})}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="model">Model *</Label>
-                    <Input id="model" placeholder="e.g., CB Shine" required />
+                    <Input 
+                      id="model" 
+                      placeholder="e.g., CB Shine" 
+                      required 
+                      value={formData.modelName}
+                      onChange={(e) => setFormData({...formData, modelName: e.target.value})}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="year">Year *</Label>
-                    <Select required>
+                    <Select required value={formData.year} onValueChange={(value) => setFormData({...formData, year: value})}>
                       <SelectTrigger id="year">
                         <SelectValue placeholder="Select year" />
                       </SelectTrigger>
@@ -113,18 +206,51 @@ const SellVehicle = () => {
 
                   <div>
                     <Label htmlFor="price">Price (NPR) *</Label>
-                    <Input id="price" type="number" placeholder="e.g., 145000" required />
+                    <Input 
+                      id="price" 
+                      type="number" 
+                      placeholder="e.g., 145000" 
+                      required 
+                      value={formData.price}
+                      onChange={(e) => setFormData({...formData, price: e.target.value})}
+                    />
                   </div>
 
                   <div>
                     <Label htmlFor="kms">Kilometers Driven *</Label>
-                    <Input id="kms" type="number" placeholder="e.g., 12000" required />
+                    <Input 
+                      id="kms" 
+                      type="number" 
+                      placeholder="e.g., 12000" 
+                      required 
+                      value={formData.mileage}
+                      onChange={(e) => setFormData({...formData, mileage: e.target.value})}
+                    />
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="title">Ad Title *</Label>
-                  <Input id="title" placeholder="e.g., Honda CB Shine 2020 - Excellent Condition" required />
+                  <div>
+                    <Label htmlFor="engine">Engine Capacity (cc)</Label>
+                    <Input 
+                      id="engine" 
+                      type="number"
+                      placeholder="e.g., 125" 
+                      value={formData.engineCapacity}
+                      onChange={(e) => setFormData({...formData, engineCapacity: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="condition">Condition *</Label>
+                    <Select required value={formData.condition} onValueChange={(value) => setFormData({...formData, condition: value})}>
+                      <SelectTrigger id="condition">
+                        <SelectValue placeholder="Select condition" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="used">Used</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div>
@@ -134,100 +260,32 @@ const SellVehicle = () => {
                     placeholder="Describe your vehicle's condition, features, and any additional information..."
                     rows={6}
                     required
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
                   />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Vehicle Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Vehicle Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="engine">Engine Capacity *</Label>
-                    <Input id="engine" placeholder="e.g., 125 cc" required />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="fuel">Fuel Type *</Label>
-                    <Select required>
-                      <SelectTrigger id="fuel">
-                        <SelectValue placeholder="Select fuel type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="petrol">Petrol</SelectItem>
-                        <SelectItem value="diesel">Diesel</SelectItem>
-                        <SelectItem value="electric">Electric</SelectItem>
-                        <SelectItem value="hybrid">Hybrid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="transmission">Transmission *</Label>
-                    <Select required>
-                      <SelectTrigger id="transmission">
-                        <SelectValue placeholder="Select transmission" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="manual">Manual</SelectItem>
-                        <SelectItem value="automatic">Automatic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="owners">Number of Owners *</Label>
-                    <Select required>
-                      <SelectTrigger id="owners">
-                        <SelectValue placeholder="Select owners" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1st Owner</SelectItem>
-                        <SelectItem value="2">2nd Owner</SelectItem>
-                        <SelectItem value="3">3rd Owner</SelectItem>
-                        <SelectItem value="4+">4+ Owners</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="color">Color *</Label>
-                    <Input id="color" placeholder="e.g., Black" required />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="condition">Condition *</Label>
-                    <Select required>
-                      <SelectTrigger id="condition">
-                        <SelectValue placeholder="Select condition" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="excellent">Excellent</SelectItem>
-                        <SelectItem value="good">Good</SelectItem>
-                        <SelectItem value="fair">Fair</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="negotiable" />
+                    <Checkbox 
+                      id="negotiable" 
+                      checked={formData.isNegotiable}
+                      onCheckedChange={(checked) => setFormData({...formData, isNegotiable: checked as boolean})}
+                    />
                     <Label htmlFor="negotiable" className="cursor-pointer">Price is negotiable</Label>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Checkbox id="urgent" />
+                    <Checkbox 
+                      id="urgent" 
+                      checked={formData.isUrgent}
+                      onCheckedChange={(checked) => setFormData({...formData, isUrgent: checked as boolean})}
+                    />
                     <Label htmlFor="urgent" className="cursor-pointer">Mark as urgent sale</Label>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Location & Contact */}
             <Card>
               <CardHeader>
                 <CardTitle>Location & Contact</CardTitle>
@@ -236,47 +294,33 @@ const SellVehicle = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">City *</Label>
-                    <Select required>
-                      <SelectTrigger id="city">
-                        <SelectValue placeholder="Select city" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pokhara">Pokhara</SelectItem>
-                        <SelectItem value="kathmandu">Kathmandu</SelectItem>
-                        <SelectItem value="lalitpur">Lalitpur</SelectItem>
-                        <SelectItem value="bhaktapur">Bhaktapur</SelectItem>
-                        <SelectItem value="biratnagar">Biratnagar</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input 
+                      id="city" 
+                      placeholder="e.g., Pokhara" 
+                      required 
+                      value={formData.city}
+                      onChange={(e) => setFormData({...formData, city: e.target.value})}
+                    />
                   </div>
 
                   <div>
-                    <Label htmlFor="area">Area/Locality *</Label>
-                    <Input id="area" placeholder="e.g., Lakeside" required />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="name">Your Name *</Label>
-                    <Input id="name" placeholder="Full name" required />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <Input id="phone" type="tel" placeholder="+977 98XX-XXXXXX" required />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label htmlFor="email">Email (optional)</Label>
-                    <Input id="email" type="email" placeholder="your@email.com" />
+                    <Label htmlFor="phone">Contact Phone *</Label>
+                    <Input 
+                      id="phone" 
+                      type="tel" 
+                      placeholder="+977 98XX-XXXXXX" 
+                      required 
+                      value={formData.contactPhone}
+                      onChange={(e) => setFormData({...formData, contactPhone: e.target.value})}
+                    />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Photos */}
             <Card>
               <CardHeader>
-                <CardTitle>Photos (Up to 10 images)</CardTitle>
+                <CardTitle>Photos (Up to 10 images) *</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -312,7 +356,6 @@ const SellVehicle = () => {
               </CardContent>
             </Card>
 
-            {/* Submit */}
             <Card className="border-primary/20 bg-primary/5">
               <CardContent className="p-6">
                 <div className="flex items-start gap-3 mb-4">
@@ -324,8 +367,15 @@ const SellVehicle = () => {
                     </p>
                   </div>
                 </div>
-                <Button type="submit" size="lg" className="w-full">
-                  Submit Listing
+                <Button type="submit" size="lg" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Listing"
+                  )}
                 </Button>
               </CardContent>
             </Card>
